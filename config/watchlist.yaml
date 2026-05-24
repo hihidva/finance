@@ -1,0 +1,148 @@
+# Watchlist for finance-bot
+#
+# Strategy chốt: swing/position trading trên khung 1D, vị thế vài tuần đến vài tháng.
+# Một số asset chỉ dùng làm bối cảnh vĩ mô (context_only=true) → KHÔNG sinh signal độc lập,
+# chỉ feed vào prompt LLM khi phân tích các asset chính.
+#
+# asset_class:
+#   vn_stock  -> source=vnstock,  symbol HOSE/HNX/UPCOM
+#   crypto    -> source=ccxt,     symbol pair Binance (vd: BTC/USDT)
+#   commodity -> source=yfinance, symbol futures/spot (XAUUSD=X, CL=F)
+#   fx_index  -> source=yfinance, symbol index (DX-Y.NYB)
+
+assets:
+  # === Cổ phiếu VN — primary signal targets ===
+  - symbol: FPT
+    name: FPT Corporation
+    asset_class: vn_stock
+    source: vnstock
+    exchange: HOSE
+    timeframes: [1d]
+
+  - symbol: HPG
+    name: Hoa Phat Group
+    asset_class: vn_stock
+    source: vnstock
+    exchange: HOSE
+    timeframes: [1d]
+
+  - symbol: MSN
+    name: Masan Group
+    asset_class: vn_stock
+    source: vnstock
+    exchange: HOSE
+    timeframes: [1d]
+
+  - symbol: MBS
+    name: MB Securities
+    asset_class: vn_stock
+    source: vnstock
+    exchange: HNX
+    timeframes: [1d]
+
+  - symbol: MBB
+    name: MB Bank
+    asset_class: vn_stock
+    source: vnstock
+    exchange: HOSE
+    timeframes: [1d]
+
+  # === BTC — primary signal target ===
+  - symbol: BTC/USDT
+    name: Bitcoin
+    asset_class: crypto
+    source: ccxt
+    exchange: binance
+    timeframes: [1d]
+
+  # === Vàng quốc tế — primary signal target ===
+  - symbol: XAUUSD=X
+    name: Gold spot (XAU/USD, international)
+    asset_class: commodity
+    source: yfinance
+    timeframes: [1d]
+
+  # === WTI + DXY — context vĩ mô, không sinh signal ===
+  - symbol: CL=F
+    name: WTI Crude Oil (macro context only)
+    asset_class: commodity
+    source: yfinance
+    timeframes: [1d]
+    context_only: true
+
+  - symbol: DX-Y.NYB
+    name: US Dollar Index (macro context only)
+    asset_class: fx_index
+    source: yfinance
+    timeframes: [1d]
+    context_only: true
+
+  # ^IRX = 13-week US Treasury Bill yield, used as a daily proxy for BOTH
+  # the FED policy rate (Fed Funds Rate tracks short T-Bill yields closely)
+  # AND the short end of the UST curve. asset_class=fx_index is a deliberate
+  # reuse: the class is the closest existing bucket for "macro non-equity index"
+  # (DXY lives here too). Never alerts because context_only=true.
+  - symbol: ^IRX
+    name: US 13W T-Bill yield (FED rate & short-end UST proxy, macro context only)
+    asset_class: fx_index
+    source: yfinance
+    timeframes: [1d]
+    context_only: true
+
+# RSS feeds — dùng cho macro/sentiment
+news_sources:
+  - name: CafeF Chứng khoán
+    url: https://cafef.vn/thi-truong-chung-khoan.rss
+    lang: vi
+    tags: [vn_stock, macro_vn]
+
+  - name: CafeF Vĩ mô
+    url: https://cafef.vn/vi-mo-dau-tu.rss
+    lang: vi
+    tags: [macro_vn]
+
+  - name: Vietstock Chứng khoán
+    url: https://vietstock.vn/830/chung-khoan/co-phieu.rss
+    lang: vi
+    tags: [vn_stock]
+
+  - name: Investing News
+    url: https://www.investing.com/rss/news.rss
+    lang: en
+    tags: [macro_global, commodity, fx]
+
+  - name: CoinDesk
+    url: https://www.coindesk.com/arc/outboundfeeds/rss/
+    lang: en
+    tags: [crypto]
+
+# Signal thresholds — Tier A "Strong" only (theo quyết định của user)
+# - Tier A: alert + ghi DB
+# - Tier B/C: chỉ ghi DB, không alert
+#
+# Ngưỡng đồng thuận TÍNH THEO TỶ LỆ (`agree_count / total_votes`) để tự co dãn khi
+# rule engine thêm/bớt indicator — không phụ thuộc số tuyệt đối.
+signal:
+  tier_a:
+    min_agree_ratio: 0.60              # ≥ 60% indicators đồng thuận
+    min_confidence: 0.75
+    require_news_not_against: true
+  tier_b:
+    min_agree_ratio: 0.45              # ≥ 45% indicators đồng thuận
+    min_confidence: 0.60
+  cooldown_hours_per_ticker: 24       # tối đa 1 alert/ngày/ticker
+  default_horizon_days: 30            # vị thế swing/position điển hình
+
+# Risk management — bot tự gợi ý SL/TP từ ATR + S/R
+risk:
+  atr_period: 14
+  stop_loss_atr_mult: 2.0             # SL = entry - 2*ATR (long)
+  take_profit_rr: 2.5                 # R:R = 1:2.5
+  use_recent_swing_for_sr: true       # ưu tiên S/R gần nhất nếu hợp lý
+
+# Schedule — VN-friendly (giờ Hà Nội = UTC+7)
+schedule:
+  vn_eod_close_local: "15:15"         # fetch EOD VN sau khi market đóng (14:45)
+  global_eod_local: "06:00"           # fetch BTC/XAU/WTI/DXY sáng hôm sau
+  signal_run_local: "16:00"           # phân tích & gửi alert sau khi data ready
+  timezone: "Asia/Ho_Chi_Minh"

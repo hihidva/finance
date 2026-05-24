@@ -1,0 +1,24 @@
+# finance-bot — Laravel-style single-entry scheduler (Asia/Ho_Chi_Minh)
+#
+# One cron line. One. Forever. Edit `config/schedule.py` to add or remove batches.
+#
+# Setup:
+#   1. Replace PROJECT with the absolute path to your checkout.
+#   2. `crontab -e` → paste the line below.
+#   3. Ensure the Mac is logged in. If the Mac is asleep at a scheduled tick the
+#      tick is missed (we deliberately do NOT keep the system awake — see Q6
+#      in .claude/tmp/feedback-*.md). If you need every tick to fire, run a
+#      `caffeinate -i` separately or disable sleep:
+#         sudo pmset -a sleep 0   # only safe when plugged in
+#
+# Cron table (m h dom mon dow command)
+# Mac cron uses local time (ICT here).
+#
+PROJECT=/Users/pc7/Desktop/code/finance
+
+# ─── The one entry ───────────────────────────────────────────────────────────
+# Ticks every minute. The scheduler reads config/schedule.py and runs whichever
+# tasks are due. Per-task cron expressions live in that Python file, not here.
+* * * * * $PROJECT/bin/run-cron.sh schedule-run
+
+# Anything else? Don't add it here — declare it in config/schedule.py instead.
