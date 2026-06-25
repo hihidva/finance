@@ -8,7 +8,7 @@
 
 **Mục tiêu domain này:**
 
-1. Catalog 14 chỉ báo **đang active** — kèm công thức, vote rule, data requirement, horizon.
+1. Catalog 15 chỉ báo **đang active** — kèm công thức, vote rule, data requirement, horizon.
 2. Định nghĩa **contract chuẩn** để bất kỳ contributor nào thêm 1 chỉ báo mới đều theo cùng pattern.
 3. Tracking **status** từng chỉ báo qua lifecycle: `active` (đang vote) / `deprecated` (đã loại).
 
@@ -55,9 +55,9 @@ implement math + vote ──> active ──obsolete──> deprecated
 - `active`: hàm `vote_<name>()` tồn tại VÀ được include trong `compute_snapshot()` votes list.
 - `deprecated`: từng active, nay đã loại khỏi `compute_snapshot()` votes (giữ math cho test backwards-compat 1 release cycle trước khi xoá hẳn).
 
-> Khi muốn thêm indicator mới ngoài 14 hiện có, follow quy trình ở §8.4 (Tích hợp vào Signal Pipeline).
+> Khi muốn thêm indicator mới ngoài 15 hiện có, follow quy trình ở §8.4 (Tích hợp vào Signal Pipeline).
 
-## 8.3 Indicator catalog (14 chỉ báo active)
+## 8.3 Indicator catalog (15 chỉ báo active)
 
 ### Nhóm 1 — Trend (xu hướng)
 
@@ -96,7 +96,8 @@ implement math + vote ──> active ──obsolete──> deprecated
 | # | Canonical name | Horizon | Min bars | Formula tóm tắt | Buy rule | Sell rule |
 |---|---|---|---|---|---|---|
 | 13 | `SUPERTREND` | medium | 14 | HL2 ± 3 × ATR(10), flip-based | direction = +1 (flip mới strength cao) | direction = −1 (flip mới strength cao) |
-| 14 | `DONCHIAN` | medium | 21 | Max(high, 20) / Min(low, 20) — breakout 20 phiên | close > prev 20-bar high | close < prev 20-bar low |
+| 14 | `PSAR` | medium | 5 | Parabolic SAR (Wilder), AF 0.02→0.20 — trailing stop flip-based | trend = +1 / giá trên SAR (flip mới strength cao) | trend = −1 / giá dưới SAR (flip mới strength cao) |
+| 15 | `DONCHIAN` | medium | 21 | Max(high, 20) / Min(low, 20) — breakout 20 phiên | close > prev 20-bar high | close < prev 20-bar low |
 
 ## 8.4 Tích hợp vào Signal Pipeline
 
