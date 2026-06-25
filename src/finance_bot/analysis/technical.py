@@ -454,7 +454,7 @@ def vote_supertrend(df: pd.DataFrame) -> Vote:
 
 def vote_psar(df: pd.DataFrame) -> Vote:
     """Parabolic SAR vote — flip mới mạnh nhất, trend đang chạy yếu hơn."""
-    if len(df) < 5:
+    if len(df) < 10:
         return Vote("PSAR", "hold", 0.0, {"insufficient_data": True})
     sar_line, trend = psar(df)
     if pd.isna(sar_line.iloc[-1]):

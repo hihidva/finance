@@ -96,7 +96,7 @@ implement math + vote ──> active ──obsolete──> deprecated
 | # | Canonical name | Horizon | Min bars | Formula tóm tắt | Buy rule | Sell rule |
 |---|---|---|---|---|---|---|
 | 13 | `SUPERTREND` | medium | 14 | HL2 ± 3 × ATR(10), flip-based | direction = +1 (flip mới strength cao) | direction = −1 (flip mới strength cao) |
-| 14 | `PSAR` | medium | 5 | Parabolic SAR (Wilder), AF 0.02→0.20 — trailing stop flip-based | trend = +1 / giá trên SAR (flip mới strength cao) | trend = −1 / giá dưới SAR (flip mới strength cao) |
+| 14 | `PSAR` | medium | 10 | Parabolic SAR (Wilder), AF 0.02→0.20 — trailing stop flip-based | trend = +1 / giá trên SAR (flip mới strength cao) | trend = −1 / giá dưới SAR (flip mới strength cao) |
 | 15 | `DONCHIAN` | medium | 21 | Max(high, 20) / Min(low, 20) — breakout 20 phiên | close > prev 20-bar high | close < prev 20-bar low |
 
 ## 8.4 Tích hợp vào Signal Pipeline

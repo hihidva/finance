@@ -267,3 +267,70 @@ Mỗi indicator mới được wire vào `compute_snapshot()` phải bổ sung T
 - **Expected:**
   - `signal.tier == "C"`
   - `signal.side` follow `snap.dominant_side` (có thể `hold`).
+
+---
+
+## PSAR (Parabolic SAR — chỉ báo #14, Advanced)
+
+> Theo template "Test cases khi thêm indicator mới". PSAR là trailing-stop flip-based (giống Supertrend): với data đủ bar, vote **luôn** là `buy` hoặc `sell` — KHÔNG bao giờ `hold` (trừ insufficient/NaN). Đây là điểm khác biệt với template "neutral → hold".
+
+### TC-IDC-21: `vote_psar` — uptrend → buy
+
+- **Scope:** `vote_psar`
+- **Precondition:** `build_ohlcv(100, trend=+0.5, noise=0.3)` (uptrend rõ rệt, giá nằm trên SAR).
+- **Steps:**
+  1. Generate df uptrend.
+  2. Call `vote_psar(df)`.
+- **Expected:**
+  - `vote.side == "buy"`
+  - `vote.detail["direction"] == 1`
+  - `vote.detail["psar"] < vote.detail["close"]` (SAR nằm dưới giá trong uptrend)
+  - `vote.strength in {0.45, 0.85}`
+
+### TC-IDC-22: `vote_psar` — downtrend → sell
+
+- **Scope:** `vote_psar`
+- **Precondition:** `build_ohlcv(100, trend=-0.5, noise=0.3)`.
+- **Steps:**
+  1. Generate df downtrend.
+  2. Call `vote_psar(df)`.
+- **Expected:**
+  - `vote.side == "sell"`
+  - `vote.detail["direction"] == -1`
+  - `vote.detail["psar"] > vote.detail["close"]` (SAR nằm trên giá trong downtrend)
+
+### TC-IDC-23: `vote_psar` — flip mới ở bar cuối → strength 0.85
+
+- **Scope:** `vote_psar` flip detection
+- **Precondition:** Uptrend ~40 bar, sau đó override bar cuối rớt mạnh xuyên thủng SAR (force `trend[-1] != trend[-2]`).
+- **Steps:**
+  1. Build df uptrend `build_ohlcv(40, trend=+0.4, noise=0.2)`.
+  2. Override `df.loc[df.index[-1], ["low", "close"]]` xuống thấp hơn `psar(df).sar_line.iloc[-2]` đủ để đảo trend.
+  3. Call `vote_psar(df)`.
+- **Expected:**
+  - `vote.detail["flipped"] is True`
+  - `vote.strength == 0.85`
+  - `vote.side == "sell"` (vừa flip từ up → down)
+
+### TC-IDC-24: `vote_psar` — insufficient data (<10 bars) → hold 0.0
+
+- **Scope:** `vote_psar` guard
+- **Precondition:** `build_ohlcv(9)` (dưới `min_bars=10`).
+- **Steps:**
+  1. Call `vote_psar(build_ohlcv(9))`.
+- **Expected:**
+  - `vote.side == "hold"`, `vote.strength == 0.0`
+  - `vote.detail == {"insufficient_data": True}`
+  - Không raise (kể cả `IndexError`).
+
+### TC-IDC-25: `vote_psar` — sideways KHÔNG ra hold + catalog consistency
+
+- **Scope:** `vote_psar` behavior + `INDICATORS` / `compute_snapshot` (extension của TC-IDC-17)
+- **Precondition:** `build_ohlcv(200, trend=0.0)` sideways.
+- **Steps:**
+  1. Call `vote_psar(df)` trên sideways data.
+  2. Read `INDICATORS`; call `compute_snapshot(df)`.
+- **Expected:**
+  - `vote.side in {"buy", "sell"}` (PSAR không bao giờ `hold` khi đủ data — luôn có trend ±1).
+  - `"PSAR" in INDICATORS`
+  - `"PSAR" in {v.name for v in snap.votes}` (wired vào compute_snapshot).
