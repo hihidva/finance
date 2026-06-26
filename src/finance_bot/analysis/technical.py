@@ -191,6 +191,66 @@ def chaikin_money_flow(df: pd.DataFrame, length: int = 20) -> pd.Series:
     return mfv.rolling(length).sum() / df["volume"].rolling(length).sum()
 
 
+def psar(
+    df: pd.DataFrame,
+    af_init: float = 0.02,
+    af_step: float = 0.02,
+    af_max: float = 0.20,
+) -> tuple[pd.Series, pd.Series]:
+    """Parabolic SAR (Wilder). Return (sar_line, trend). trend ∈ {1: up, -1: down}.
+
+    SAR là trailing stop: trend up khi giá nằm trên SAR, trend down khi dưới.
+    Khi giá xuyên qua SAR → đảo trend (flip) + reset acceleration factor.
+    """
+    high = df["high"].to_numpy(dtype=float)
+    low = df["low"].to_numpy(dtype=float)
+    n = len(df)
+    sar = np.full(n, np.nan)
+    trend = np.ones(n, dtype=int)
+    if n < 2:
+        return pd.Series(sar, index=df.index), pd.Series(trend, index=df.index)
+
+    # Khởi tạo: đoán trend từ 2 bar đầu.
+    up = high[1] >= high[0]
+    cur_trend = 1 if up else -1
+    ep = high[1] if up else low[1]          # extreme point
+    af = af_init
+    sar[0] = low[0] if up else high[0]
+    sar[1] = sar[0]
+
+    for i in range(1, n):
+        prior_sar = sar[i - 1]
+        new_sar = prior_sar + af * (ep - prior_sar)
+
+        if cur_trend == 1:  # uptrend
+            # SAR không được vượt low của 2 bar gần nhất.
+            new_sar = min(new_sar, low[i - 1], low[i - 2] if i >= 2 else low[i - 1])
+            if high[i] > ep:
+                ep = high[i]
+                af = min(af + af_step, af_max)
+            if low[i] < new_sar:  # đảo chiều sang downtrend
+                cur_trend = -1
+                new_sar = ep
+                ep = low[i]
+                af = af_init
+        else:  # downtrend
+            # SAR không được thấp hơn high của 2 bar gần nhất.
+            new_sar = max(new_sar, high[i - 1], high[i - 2] if i >= 2 else high[i - 1])
+            if low[i] < ep:
+                ep = low[i]
+                af = min(af + af_step, af_max)
+            if high[i] > new_sar:  # đảo chiều sang uptrend
+                cur_trend = 1
+                new_sar = ep
+                ep = high[i]
+                af = af_init
+
+        sar[i] = new_sar
+        trend[i] = cur_trend
+
+    return pd.Series(sar, index=df.index), pd.Series(trend, index=df.index)
+
+
 # ----------------------------------------------------------------------
 # Vote dataclass
 # ----------------------------------------------------------------------
@@ -392,6 +452,29 @@ def vote_supertrend(df: pd.DataFrame) -> Vote:
     return Vote("SUPERTREND", "sell", 0.85 if flipped else 0.45, detail)
 
 
+def vote_psar(df: pd.DataFrame) -> Vote:
+    """Parabolic SAR vote — flip mới mạnh nhất, trend đang chạy yếu hơn."""
+    if len(df) < 10:
+        return Vote("PSAR", "hold", 0.0, {"insufficient_data": True})
+    sar_line, trend = psar(df)
+    if pd.isna(sar_line.iloc[-1]):
+        return Vote("PSAR", "hold", 0.0, {"insufficient_data": True})
+
+    dir_now = int(trend.iloc[-1])
+    dir_prev = int(trend.iloc[-2]) if pd.notna(trend.iloc[-2]) else dir_now
+    flipped = dir_now != dir_prev
+    detail = {
+        "psar": float(sar_line.iloc[-1]),
+        "close": float(df["close"].iloc[-1]),
+        "direction": dir_now,
+        "flipped": flipped,
+    }
+
+    if dir_now == 1:
+        return Vote("PSAR", "buy", 0.85 if flipped else 0.45, detail)
+    return Vote("PSAR", "sell", 0.85 if flipped else 0.45, detail)
+
+
 def vote_obv(df: pd.DataFrame, lookback: int = 20) -> Vote:
     """OBV vote — bắt divergence + confirmation trên window `lookback` bars."""
     obv_series = obv(df)
@@ -502,7 +585,7 @@ def vote_cmf(df: pd.DataFrame, length: int = 20) -> Vote:
 # ----------------------------------------------------------------------
 INDICATORS = (
     "RSI14", "MACD", "EMA20/50", "EMA50/200", "BB20", "VOL", "ATR_BO",
-    "ICHIMOKU", "ADX", "SUPERTREND", "OBV", "DONCHIAN", "MFI", "CMF",
+    "ICHIMOKU", "ADX", "SUPERTREND", "PSAR", "OBV", "DONCHIAN", "MFI", "CMF",
 )
 
 
@@ -550,6 +633,7 @@ def compute_snapshot(df: pd.DataFrame) -> TechSnapshot:
         vote_ichimoku(df),
         vote_adx(df),
         vote_supertrend(df),
+        vote_psar(df),
         vote_obv(df),
         vote_donchian(df),
         vote_mfi(df),

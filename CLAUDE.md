@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `finance-bot` là một CLI Python (không có daemon dài) chạy bằng `cron` trên Mac. Nó:
 
 1. Sync OHLCV + VN flows + corporate events + RSS news vào MySQL.
-2. Chạy rule-engine (7 indicator) trên khung 1D để ra `SignalDecision` draft.
+2. Chạy rule-engine (15 indicator) trên khung 1D để ra `SignalDecision` draft.
 3. Gọi Claude (qua Claude Code CLI local — `claude --print`) làm **final-arbiter** — chỉ được CONFIRM hoặc HẠ tier (không bao giờ up-tier, không flip side; nếu LLM flip side → ép `hold`/Tier C).
-4. Chỉ alert Telegram cho **Tier A** (`≥4 indicators agree`, `confidence ≥ 0.75`, `news không ngược chiều`), với cooldown 1 alert/ticker/24h.
+4. Chỉ alert Telegram cho **Tier A** (`agree_ratio ≥ 0.60` ~ ≥60% indicators agree, `confidence ≥ 0.75`, `news không ngược chiều`), với cooldown 1 alert/ticker/24h.
 5. Học từ `outcomes` (P&L 1d/3d/7d/30d) + `user_decision` (callback button) bằng cách re-embed vào ChromaDB → run kế tiếp retrieve case lịch sử tương tự cho LLM.
 
 Stack: Python 3.12 (`uv` + `hatchling`), MySQL 5.7 (SQLAlchemy 2.x ORM), Claude Code CLI (`claude-opus-4-7`, reuses local Claude login — không cần API key), ChromaDB, sentence-transformers (`paraphrase-multilingual-MiniLM-L12-v2`).
@@ -79,7 +79,7 @@ Layout dạng layered (1 chiều phụ thuộc, không gọi ngược):
 ```
 data/      → fetcher (vnstock / ccxt / yfinance / RSS / vn_flows / vn_events)
 db/        → SQLAlchemy models + session + repositories + queries + schema.sql
-analysis/  → technical (7 indicator votes) + signal (Tier A/B/C engine) + risk (ATR + S/R)
+analysis/  → technical (15 indicator votes) + signal (Tier A/B/C engine) + risk (ATR + S/R)
 ai/        → llm (Claude CLI client) + embedding + rag (Chroma) + memory + prompt + arbiter
 notifier/  → telegram (alert + inline keyboard "Đã vào lệnh / Bỏ qua")
 jobs/      → orchestrators tương ứng với CLI subcommand

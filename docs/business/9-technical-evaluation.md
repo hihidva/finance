@@ -1,6 +1,6 @@
 # Module 9: Technical Evaluation Service (Service đánh giá kỹ thuật)
 
-> Một file = một domain. Domain "Technical Evaluation" định nghĩa **service tổng hợp 14 indicator votes thành 1 score chuẩn hoá `TechScore ∈ [-1, +1]`**. Là 1 trong 3 thước đo đầu vào của Composite Score Alert Engine (xem [Module 2 §2.11](2-signal-pipeline.md)). Không định nghĩa từng indicator (đó là [Module 8 — Indicators Catalog](8-indicators-catalog.md)) và không quyết định Tier (đó là [Module 2](2-signal-pipeline.md)).
+> Một file = một domain. Domain "Technical Evaluation" định nghĩa **service tổng hợp 15 indicator votes thành 1 score chuẩn hoá `TechScore ∈ [-1, +1]`**. Là 1 trong 3 thước đo đầu vào của Composite Score Alert Engine (xem [Module 2 §2.11](2-signal-pipeline.md)). Không định nghĩa từng indicator (đó là [Module 8 — Indicators Catalog](8-indicators-catalog.md)) và không quyết định Tier (đó là [Module 2](2-signal-pipeline.md)).
 
 ## 9.1 Mục đích
 
@@ -37,7 +37,7 @@ def compute_technical_score(asset: AssetConfig, df_1d: pd.DataFrame) -> TechScor
 | `agree_ratio` | `float` | `max(buy_count, sell_count) / total_votes` |
 | `confidence` | `float` | Trung bình `strength` của các vote cùng side, range [0, 1] |
 | `votes_detail` | `list[Vote]` | Danh sách 14 vote raw — đẩy lên Composite Engine và RAG |
-| `reason` | `str` | Lý do ngắn (vd "9/14 indicators agree buy, confidence=0.78") |
+| `reason` | `str` | Lý do ngắn (vd "9/15 indicators agree buy, confidence=0.78") |
 
 ## 9.3 Aggregation formula
 
@@ -69,7 +69,7 @@ else:
 Hai trường này KHÔNG dùng score chuẩn hoá; giữ nguyên định nghĩa Module 8 để backwards-compatible với RAG `signals_history` (similarity search nhìn vào pattern vote, không phải score):
 
 - `dominant_side = "buy"` nếu `buy_count > sell_count`, `"sell"` nếu ngược lại, `"hold"` nếu bằng nhau.
-- `agree_ratio = max(buy_count, sell_count) / len(votes)` — với 14 indicators: 9/14 ≈ 0.64.
+- `agree_ratio = max(buy_count, sell_count) / len(votes)` — với 15 indicators: 9/15 = 0.60.
 
 Composite Engine ở Module 2 sẽ **chỉ cần `score`** để cộng vào tổng weighted; `dominant_side`/`agree_ratio` truyền lên cho debug + ghi `signals.indicators` JSON.
 

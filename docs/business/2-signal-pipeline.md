@@ -24,13 +24,13 @@ Module cốt lõi: từ OHLCV + news + macro context, ra **Tier A** signal và a
 | Tier B | `agree_ratio ≥ 0.45` (≥ 45% indicators agree), confidence ≥ 0.60 |
 | Tier C | còn lại |
 
-> Ngưỡng dùng **tỷ lệ động** (`agree_count / len(snapshot.votes)`) — tự co dãn khi catalog thêm/bớt indicator. Với 14 indicator hiện tại: Tier A cần ≥ 9 agree (≈60%), Tier B cần ≥ 7 agree (≈50% sau làm tròn). Config tại [config/watchlist.yaml](../../config/watchlist.yaml) (`signal.tier_a.min_agree_ratio`).
+> Ngưỡng dùng **tỷ lệ động** (`agree_count / len(snapshot.votes)`) — tự co dãn khi catalog thêm/bớt indicator. Với 15 indicator hiện tại: Tier A cần ≥ 9 agree (=60%), Tier B cần ≥ 7 agree (≈47% sau làm tròn). Config tại [config/watchlist.yaml](../../config/watchlist.yaml) (`signal.tier_a.min_agree_ratio`).
 | Cooldown | 1 alert / ticker / 24h, bất kể side |
 | Alert channel | Telegram text-only + 2 inline button feedback |
 
 ## 2.3 Indicators (rule engine)
 
-14 indicator thuần pandas trong [analysis/technical.py](../../src/finance_bot/analysis/technical.py):
+15 indicator thuần pandas trong [analysis/technical.py](../../src/finance_bot/analysis/technical.py):
 
 | Indicator | Buy vote | Sell vote |
 |---|---|---|
@@ -44,6 +44,7 @@ Module cốt lõi: từ OHLCV + news + macro context, ra **Tier A** signal và a
 | Ichimoku Cloud | close > Kumo top & Tenkan > Kijun | close < Kumo bot & Tenkan < Kijun |
 | ADX(14) | ADX > 25 & DI+ > DI− | ADX > 25 & DI− > DI+ |
 | Supertrend(10, 3) | direction = +1 (flip mới = strength cao) | direction = −1 (flip mới = strength cao) |
+| Parabolic SAR (0.02, 0.20) | trend = +1 / giá trên SAR (flip mới = strength cao) | trend = −1 / giá dưới SAR (flip mới = strength cao) |
 | OBV(20) | OBV trending up (divergence vs giá khi giá xuống) | OBV trending down |
 | Donchian(20) | close > prev 20-bar high (breakout up) | close < prev 20-bar low (breakout down) |
 | MFI(14) | MFI < 20 và đang hồi (oversold reversal) | MFI > 80 và đang giảm (overbought reversal) |
